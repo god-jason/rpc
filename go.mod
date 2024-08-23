@@ -1,6 +1,6 @@
 module github.com/god-jason/pico
 
-go 1.22
+go 1.23
 
 require (
 	github.com/bytedance/sonic v1.12.1 // indirect
