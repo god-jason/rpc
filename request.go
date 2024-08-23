@@ -3,7 +3,6 @@ package pico
 import (
 	"bufio"
 	"bytes"
-	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
@@ -28,6 +27,10 @@ func Request(req *http.Request) (resp *http.Response, err error) {
 	return
 }
 
+func AttachHandler(handler http.Handler) {
+	pico.httpHandler = handler
+}
+
 func handleRequest(buf []byte) {
 
 	//1 解析request
@@ -37,14 +40,13 @@ func handleRequest(buf []byte) {
 	}
 
 	//构建response，接收响应
-	rw := NewHttpResponseWriter()
+	rw := newHttpResponseWriter()
 
 	//2 执行请求
-	app := gin.New()
-	req.Header.Set("token", "inline") //使用内置token，免验证
-	app.ServeHTTP(rw, req)
+	//req.Header.Set("token", "inline") //使用内置token，免验证
+	handler.ServeHTTP(rw, req)
 
 	//3 回传 response
-	conn.Write(rw.Bytes())
+	rw.Bytes()
 
 }
