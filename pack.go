@@ -15,7 +15,7 @@ type Encoder func(any) ([]byte, error)
 type Decoder func([]byte, any) error
 
 const (
-	RESERVED uint8 = iota
+	DISCONNECT uint8 = iota
 	CONNECT
 	CONNECT_ACK
 	PING
@@ -30,7 +30,7 @@ const (
 	SUBSCRIBE_ACK
 	UNSUBSCRIBE
 	UNSUBSCRIBE_ACK
-	DISCONNECT
+	MESSAGE
 )
 
 const (
@@ -58,21 +58,6 @@ var decoders = map[uint8]Decoder{
 func RegisterEncoding(typ uint8, encoder Encoder, decoder Decoder) {
 	encoders[typ] = encoder
 	decoders[typ] = decoder
-}
-
-type Connect struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type ConnectAgain struct {
-	Id    string `json:"id"`
-	Token string `json:"token"`
-}
-
-type ConnectAck struct {
-	Id    string `json:"id"`
-	Token string `json:"token"`
 }
 
 type Pack struct {

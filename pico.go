@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -23,15 +22,16 @@ const (
 type Pico struct {
 	handler http.Handler
 	conn    net.Conn
-	id      atomic.Uint32
+	id      uint16
+	idLock  sync.Mutex
 
 	reader     *bufio.Reader
 	writer     *bufio.Writer
 	writerLock sync.Mutex
 
-	streams  Map[uint16, stream]
-	requests Map[uint16, pending]
-	pings    Map[uint16, pending]
+	streams Map[uint16, Stream]
+
+	pending Map[uint16, pending]
 
 	header []byte
 	buf    []byte
@@ -49,7 +49,23 @@ func (p *Pico) attach(conn net.Conn) {
 }
 
 func (p *Pico) getId() uint16 {
-	return uint16(p.id.Add(1))
+	p.idLock.Lock()
+	defer p.idLock.Unlock()
+
+	//自增
+	p.id++
+
+	//避免与streams重复
+	for p.streams.Load(p.id) != nil {
+		p.id++
+	}
+
+	//避免与pending重复，一般不会发生那么长时间的等待
+	for p.pending.Load(p.id) != nil {
+		p.id++
+	}
+
+	return p.id
 }
 
 func (p *Pico) AttachHandler(h http.Handler) {
@@ -84,8 +100,11 @@ func (p *Pico) readPack() (*Pack, error) {
 		var b []byte
 		if length > BufferSize {
 			b = make([]byte, length)
+		} else if pack.Type == STREAM || pack.Type == STREAM_END {
+			//流数据，复制内存
+			b = make([]byte, length)
 		} else {
-			//todo 内存复制问题
+			//复用内存，可能会有问题
 			b = p.buf
 		}
 
@@ -131,50 +150,23 @@ func (p *Pico) Send(pack *Pack) error {
 	return p.writer.Flush()
 }
 
-func (p *Pico) Request(req *http.Request) (*http.Response, error) {
-	buf := bytes.NewBuffer(nil)
-	err := req.Write(buf)
-	if err != nil {
-		return nil, err
-	}
+func (p *Pico) Ask(req *Pack) (resp *Pack, err error) {
+	//自增序号
+	req.Id = p.getId()
 
-	id := p.getId()
-
-	err = p.Send(&Pack{Id: id, Type: REQUEST, Payload: buf.Bytes()})
-	if err != nil {
-		return nil, err
-	}
-
-	r := newPending()
-	p.requests.Store(id, r)
-	defer p.requests.Delete(id)
-
-	select {
-	case <-time.After(time.Minute):
-		return nil, errors.New("ping timeout")
-	case pack := <-r.c:
-		if pack == nil {
-			return nil, errors.New("invalid pending")
-		}
-		return http.ReadResponse(bufio.NewReader(bytes.NewReader(pack.Payload)), req)
-	}
-}
-
-func (p *Pico) Ping() (ms int, err error) {
-	id := p.getId()
-	err = p.Send(&Pack{Id: id, Type: PING})
+	//发送
+	err = p.Send(req)
 	if err != nil {
 		return
 	}
 
-	start := time.Now().UnixMilli()
-
 	r := newPending()
-	p.pings.Store(id, r)
-	defer p.pings.Delete(id)
+	p.pending.Store(req.Id, r)
+	defer p.pending.Delete(req.Id)
 
+	//等待结果
 	select {
-	case <-time.After(time.Minute):
+	case <-time.After(time.Minute): //TODO配置化
 		err = errors.New("ping timeout")
 		return
 	case pack := <-r.c:
@@ -182,15 +174,41 @@ func (p *Pico) Ping() (ms int, err error) {
 			err = errors.New("invalid pending")
 			return
 		}
-		return int(time.Now().UnixMilli() - start), nil
+		return pack, nil
 	}
 }
 
-func (p *Pico) Stream() (rw io.ReadWriteCloser, id uint16) {
+func (p *Pico) Request(req *http.Request) (*http.Response, error) {
+	buf := bytes.NewBuffer(nil)
+	err := req.Write(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	pack, err := p.Ask(&Pack{Type: REQUEST, Payload: buf.Bytes()})
+	if err != nil {
+		return nil, err
+	}
+
+	return http.ReadResponse(bufio.NewReader(bytes.NewReader(pack.Payload)), req)
+}
+
+func (p *Pico) Ping() (ms int, err error) {
+	start := time.Now().UnixMilli()
+
+	_, err = p.Ask(&Pack{Type: PING})
+	if err != nil {
+		return
+	}
+
+	return int(time.Now().UnixMilli() - start), nil
+}
+
+func (p *Pico) Stream() (stream *Stream, id uint16) {
 	id = p.getId()
-	stream := newStream(p, id)
+	stream = newStream(p, id)
 	p.streams.Store(id, stream)
-	return stream, id
+	return
 }
 
 func (p *Pico) handlePing(pack *Pack) {
@@ -200,14 +218,6 @@ func (p *Pico) handlePing(pack *Pack) {
 		//todo log
 	}
 }
-
-func (p *Pico) handlePong(pack *Pack) {
-	pending := p.pings.Load(pack.Id)
-	if pending != nil {
-		pending.c <- pack
-	}
-}
-
 func (p *Pico) handleRequest(pack *Pack) {
 	if p.handler == nil {
 		return
@@ -236,21 +246,14 @@ func (p *Pico) handleRequest(pack *Pack) {
 	}
 }
 
-func (p *Pico) handleResponse(pack *Pack) {
-	pending := p.requests.Load(pack.Id)
+func (p *Pico) handleAsk(pack *Pack) {
+	pending := p.pending.Load(pack.Id)
 	if pending != nil {
 		pending.c <- pack
 	}
 }
 
 func (p *Pico) handleStream(pack *Pack) {
-	stream := p.streams.Load(pack.Id)
-	if stream != nil {
-		stream.put(pack)
-	}
-}
-
-func (p *Pico) handleStreamEnd(pack *Pack) {
 	stream := p.streams.Load(pack.Id)
 	if stream != nil {
 		stream.put(pack)

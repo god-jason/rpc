@@ -2,15 +2,15 @@ package pico
 
 import "io"
 
-func newStream(pico *Pico, id uint16) *stream {
-	return &stream{
+func newStream(pico *Pico, id uint16) *Stream {
+	return &Stream{
 		c:    make(chan *Pack),
 		pico: pico,
 		id:   id,
 	}
 }
 
-type stream struct {
+type Stream struct {
 	c    chan *Pack
 	pico *Pico
 	id   uint16
@@ -18,12 +18,19 @@ type stream struct {
 	buf []byte
 }
 
-func (s *stream) put(pack *Pack) {
-	//todo 没有读操作怎么办
-	s.c <- pack
+func (s *Stream) Id() uint16 {
+	return s.id
 }
 
-func (s *stream) Write(buf []byte) (int, error) {
+func (s *Stream) put(pack *Pack) {
+	//阻塞的情况下，直接跳过，应对没有读操作的情况，但是会导致丢失数据
+	select {
+	case s.c <- pack:
+	default:
+	}
+}
+
+func (s *Stream) Write(buf []byte) (int, error) {
 	pack := &Pack{
 		Id:      s.id,
 		Type:    STREAM,
@@ -32,7 +39,7 @@ func (s *stream) Write(buf []byte) (int, error) {
 	return len(buf), s.pico.Send(pack)
 }
 
-func (s *stream) Read(buf []byte) (int, error) {
+func (s *Stream) Read(buf []byte) (int, error) {
 	//阻塞读数据
 	if len(s.buf) == 0 {
 		pack := <-s.c
@@ -60,7 +67,7 @@ func (s *stream) Read(buf []byte) (int, error) {
 	return n, nil
 }
 
-func (s *stream) Close() error {
+func (s *Stream) Close() error {
 
 	//关闭管道
 	close(s.c)
