@@ -1,8 +1,6 @@
 package pico
 
 import (
-	"bufio"
-	"bytes"
 	"net/http"
 )
 
@@ -65,58 +63,6 @@ func (c *Client) handleConnect(pack *Pack) {
 }
 
 func (c *Client) handleConnectAck(pack *Pack) {
-
-}
-
-func (c *Client) handlePing(pack *Pack) {
-	pack.Type = PONG
-	err := c.Send(pack)
-	if err != nil {
-
-	}
-}
-
-func (c *Client) handlePong(pack *Pack) {
-
-}
-
-func (c *Client) handleRequest(pack *Pack) {
-	if c.handler == nil {
-		return
-	}
-
-	//1 解析request
-	req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(pack.Payload)))
-	if err != nil {
-		return
-	}
-
-	//构建response，接收响应
-	rw := newHttpResponseWriter()
-
-	//2 执行请求
-	//req.Header.Set("token", "inline") //使用内置token，免验证
-	c.handler.ServeHTTP(rw, req)
-
-	//3 回传 response
-	pack.Type = RESPONSE
-	pack.Payload = rw.Bytes()
-
-	err = c.Send(pack)
-	if err != nil {
-
-	}
-}
-
-func (c *Client) handleResponse(pack *Pack) {
-
-}
-
-func (c *Client) handleStream(pack *Pack) {
-
-}
-
-func (c *Client) handleStreamEnd(pack *Pack) {
 
 }
 

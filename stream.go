@@ -4,22 +4,23 @@ import "io"
 
 func newStream(pico *Pico, id uint16) *stream {
 	return &stream{
-		reader: make(chan *Pack),
-		pico:   pico,
-		id:     id,
+		c:    make(chan *Pack),
+		pico: pico,
+		id:   id,
 	}
 }
 
 type stream struct {
-	reader chan *Pack
-	pico   *Pico
-	id     uint16
+	c    chan *Pack
+	pico *Pico
+	id   uint16
 
 	buf []byte
 }
 
 func (s *stream) put(pack *Pack) {
-	s.reader <- pack
+	//todo 没有读操作怎么办
+	s.c <- pack
 }
 
 func (s *stream) Write(buf []byte) (int, error) {
@@ -33,10 +34,15 @@ func (s *stream) Write(buf []byte) (int, error) {
 
 func (s *stream) Read(buf []byte) (int, error) {
 	//阻塞读数据
-	if len(buf) == 0 {
-		pack := <-s.reader
+	if len(s.buf) == 0 {
+		pack := <-s.c
 		if pack == nil {
 			return 0, io.EOF
+		}
+
+		//如果是结束包，则
+		if pack.Type == STREAM_END {
+			close(s.c)
 		}
 
 		s.buf = pack.Payload //复制
@@ -55,6 +61,14 @@ func (s *stream) Read(buf []byte) (int, error) {
 }
 
 func (s *stream) Close() error {
-	close(s.reader)
-	return nil
+
+	//关闭管道
+	close(s.c)
+
+	//通知对方
+	return s.pico.Send(&Pack{
+		Id:      s.id,
+		Type:    STREAM_END,
+		Payload: nil,
+	})
 }

@@ -35,7 +35,7 @@ func (c *Incoming) receive() {
 		if n < HeaderSize {
 			//break
 			continue //TODO继续接受
-			//reader.UnreadByte()
+			//c.UnreadByte()
 		}
 
 		if bytes.Compare(header[:MagicSize], []byte(Magic)) != 0 {
