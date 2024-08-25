@@ -20,7 +20,7 @@ PICO是一个简单的物联网通讯协议，基于TCP/IP协议，
 
 | id | 类型              | 方向 | 说明     |
 |----|-----------------|----|--------|
-| 0  | -               | -  | 预留     |
+| 0  | DISCONNECT      | 双向 | 关闭连接   |
 | 1  | CONNECT         | 上行 | 连接     |
 | 2  | CONNECT_ACK     | 下行 | 连接响应   |
 | 3  | PING            | 双向 | ping   |
@@ -29,13 +29,13 @@ PICO是一个简单的物联网通讯协议，基于TCP/IP协议，
 | 6  | RESPONSE        | 双向 | 响应     |
 | 7  | STREAM          | 双向 | 数据流    |
 | 8  | STREAM_END      | 双向 | 数据流结束  |
-| 9  | PUBLISH         | 双向 | 发布     |
-| 10 | PUBLISH_ACK     | 双向 | 发布响应   |
+| 9  | PUBLISH         | 上行 | 发布     |
+| 10 | PUBLISH_ACK     | 下行 | 发布响应   |
 | 11 | SUBSCRIBE       | 上行 | 订阅     |
 | 12 | SUBSCRIBE_ACK   | 下行 | 订阅响应   |
 | 13 | UNSUBSCRIBE     | 上行 | 取消订阅   |
 | 14 | UNSUBSCRIBE_ACK | 下行 | 取消订阅响应 |
-| 15 | DISCONNECT      | 双向 | 关闭连接   |
+| 15 | MESSAGE         | 下行 | 消息     |
 
 ### 1.3 数据格式
 

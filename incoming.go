@@ -9,18 +9,18 @@ import (
 	"net/http"
 )
 
-type Client struct {
+type Incoming struct {
 	handler http.Handler
 	conn    net.Conn
 	id      uint16
 }
 
-func (c *Client) Disconnect(reason string) {
+func (c *Incoming) Disconnect(reason string) {
 	//todo 发送 disconnect
 	_ = c.conn.Close()
 }
 
-func (c *Client) receive() {
+func (c *Incoming) receive() {
 	header := make([]byte, HeaderSize)
 	buf := make([]byte, BufferSize)
 
@@ -77,7 +77,7 @@ func (c *Client) receive() {
 	}
 }
 
-func (c *Client) Send(pack *Pack) error {
+func (c *Incoming) Send(pack *Pack) error {
 	header := make([]byte, HeaderSize)
 	copy(header[:MagicSize], []byte(Magic))
 	binary.BigEndian.PutUint16(header[4:], c.id)
@@ -102,14 +102,14 @@ func (c *Client) Send(pack *Pack) error {
 	return nil
 }
 
-func (c *Client) AttachHandler(h http.Handler) {
+func (c *Incoming) AttachHandler(h http.Handler) {
 	c.handler = h
 }
 
-func (c *Client) handle(pack *Pack) {
+func (c *Incoming) handle(pack *Pack) {
 	switch pack.Type {
-	case CONNECT_ACK:
-		c.handleConnectAck(pack)
+	case CONNECT:
+		c.handleConnect(pack)
 	case PING:
 		c.handlePing(pack)
 	case PONG:
@@ -124,12 +124,10 @@ func (c *Client) handle(pack *Pack) {
 		c.handleStreamEnd(pack)
 	case PUBLISH:
 		c.handlePublish(pack)
-	case PUBLISH_ACK:
-		c.handlePublishAck(pack)
-	case SUBSCRIBE_ACK:
-		c.handleSubscribeAck(pack)
-	case UNSUBSCRIBE_ACK:
-		c.handleUnSubscribeAck(pack)
+	case SUBSCRIBE:
+		c.handleSubscribe(pack)
+	case UNSUBSCRIBE:
+		c.handleUnSubscribe(pack)
 	case DISCONNECT:
 		c.handleDisconnect(pack)
 	default:
@@ -137,15 +135,15 @@ func (c *Client) handle(pack *Pack) {
 	}
 }
 
-func (c *Client) handleConnect(pack *Pack) {
+func (c *Incoming) handleConnect(pack *Pack) {
 
 }
 
-func (c *Client) handleConnectAck(pack *Pack) {
+func (c *Incoming) handleConnectAck(pack *Pack) {
 
 }
 
-func (c *Client) handlePing(pack *Pack) {
+func (c *Incoming) handlePing(pack *Pack) {
 	pack.Type = PONG
 	err := c.Send(pack)
 	if err != nil {
@@ -153,11 +151,11 @@ func (c *Client) handlePing(pack *Pack) {
 	}
 }
 
-func (c *Client) handlePong(pack *Pack) {
+func (c *Incoming) handlePong(pack *Pack) {
 
 }
 
-func (c *Client) handleRequest(pack *Pack) {
+func (c *Incoming) handleRequest(pack *Pack) {
 	if c.handler == nil {
 		return
 	}
@@ -185,34 +183,30 @@ func (c *Client) handleRequest(pack *Pack) {
 	}
 }
 
-func (c *Client) handleResponse(pack *Pack) {
+func (c *Incoming) handleResponse(pack *Pack) {
 
 }
 
-func (c *Client) handleStream(pack *Pack) {
+func (c *Incoming) handleStream(pack *Pack) {
 
 }
 
-func (c *Client) handleStreamEnd(pack *Pack) {
+func (c *Incoming) handleStreamEnd(pack *Pack) {
 
 }
 
-func (c *Client) handlePublish(pack *Pack) {
+func (c *Incoming) handlePublish(pack *Pack) {
 
 }
 
-func (c *Client) handlePublishAck(pack *Pack) {
+func (c *Incoming) handleSubscribe(pack *Pack) {
 
 }
 
-func (c *Client) handleSubscribeAck(pack *Pack) {
+func (c *Incoming) handleUnSubscribe(pack *Pack) {
 
 }
 
-func (c *Client) handleUnSubscribeAck(pack *Pack) {
-
-}
-
-func (c *Client) handleDisconnect(pack *Pack) {
+func (c *Incoming) handleDisconnect(pack *Pack) {
 
 }
