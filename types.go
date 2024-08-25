@@ -1,15 +1,18 @@
 package pico
 
 type Connect struct {
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-	Id       string `json:"id,omitempty"`
-	Token    string `json:"token,omitempty"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type Auth struct {
+	Id    string `json:"id"`
+	Token string `json:"token"`
 }
 
 type ConnectAck struct {
-	Id    string `json:"id"`
-	Token string `json:"token"`
+	Result bool  `json:"result"`
+	Auth   *Auth `json:"auth,omitempty"`
 }
 
 type Disconnect struct {
@@ -18,10 +21,16 @@ type Disconnect struct {
 
 type Publish struct {
 	Topic   string `json:"topic"`
-	Message string `json:"message"`
+	Message any    `json:"message"`
+}
+
+type Message struct {
+	Topic   string `json:"topic"`
+	Message any    `json:"message"`
 }
 
 type PublishAck struct {
+	Topics map[string]bool `json:"topics"`
 }
 
 type Subscribe struct {

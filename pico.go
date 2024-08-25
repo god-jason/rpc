@@ -19,6 +19,33 @@ const (
 	BufferSize = 1024
 )
 
+const (
+	DISCONNECT uint8 = iota
+	CONNECT
+	CONNECT_ACK
+	PING
+	PONG
+	REQUEST
+	RESPONSE
+	STREAM
+	STREAM_END
+	PUBLISH
+	PUBLISH_ACK
+	SUBSCRIBE
+	SUBSCRIBE_ACK
+	UNSUBSCRIBE
+	UNSUBSCRIBE_ACK
+	MESSAGE
+)
+
+const (
+	BINARY uint8 = iota
+	JSON
+	XML
+	YAML
+	MSGPACK
+)
+
 type Pico struct {
 	handler http.Handler
 	conn    net.Conn
@@ -124,6 +151,12 @@ func (p *Pico) readPack() (*Pack, error) {
 }
 
 func (p *Pico) Send(pack *Pack) error {
+	//发送前，编码
+	err := pack.Encode()
+	if err != nil {
+		return err
+	}
+
 	p.writerLock.Lock()
 	defer p.writerLock.Unlock()
 
@@ -137,7 +170,7 @@ func (p *Pico) Send(pack *Pack) error {
 	header[8] = byte(length >> 8)
 	header[9] = byte(length)
 
-	_, err := p.writer.Write(header)
+	_, err = p.writer.Write(header)
 	if err != nil {
 		return err
 	}
