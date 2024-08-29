@@ -35,7 +35,6 @@ const (
 	SUBSCRIBE_ACK
 	UNSUBSCRIBE
 	UNSUBSCRIBE_ACK
-	MESSAGE
 )
 
 const (
@@ -279,7 +278,7 @@ func (p *Pico) handleRequest(pack *Pack) {
 	}
 }
 
-func (p *Pico) handleAsk(pack *Pack) {
+func (p *Pico) handleAck(pack *Pack) {
 	pending := p.pending.Load(pack.Id)
 	if pending != nil {
 		pending.c <- pack

@@ -2,6 +2,7 @@ package pico
 
 type Incoming struct {
 	Pico
+	server *Server
 }
 
 func (c *Incoming) receive() {
@@ -23,15 +24,17 @@ func (c *Incoming) handle(pack *Pack) {
 	case PING:
 		c.handlePing(pack)
 	case PONG:
-		c.handleAsk(pack)
+		c.handleAck(pack)
 	case REQUEST:
 		c.handleRequest(pack)
 	case RESPONSE:
-		c.handleAsk(pack)
+		c.handleAck(pack)
 	case STREAM, STREAM_END:
 		c.handleStream(pack)
 	case PUBLISH:
 		c.handlePublish(pack)
+	case PUBLISH_ACK:
+		c.handleAck(pack)
 	case SUBSCRIBE:
 		c.handleSubscribe(pack)
 	case UNSUBSCRIBE:
