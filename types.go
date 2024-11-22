@@ -1,12 +1,12 @@
 package pico
 
 type Connect struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Id       string `json:"id"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 type Auth struct {
-	Id    string `json:"id"`
 	Token string `json:"token"`
 }
 
